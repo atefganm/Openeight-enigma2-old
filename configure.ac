@@ -56,6 +56,11 @@ AC_ARG_WITH(boxtype,
 AC_SUBST(BOXTYPE)
 AC_DEFINE_UNQUOTED(BOXTYPE,"$BOXTYPE",[box type])
 
+AM_CONDITIONAL(ET8500, test "$BOXTYPE" == et8500)
+AM_CONDITIONAL(ET10000, test "$BOXTYPE" == et10000)
+
+AM_CONDITIONAL(ARM, test "$BOXTYPE" == sf4008 -o "$BOXTYPE" == sf8008 -o "$BOXTYPE" == sf8008m)
+
 AM_CONDITIONAL(DMAMLOGIC, test "$BOXTYPE" == "dreamone" -o "$BOXTYPE" == "dreamtwo")
 AM_CONDITIONAL(DREAMBOX, test `echo "$BOXTYPE" | cut -b 1-2` == "dm")
 AM_CONDITIONAL(HAVE_TEMPFANCONTROL, test "$BOXTYPE" == dm8000 -o "$BOXTYPE" == dm800se -o "$BOXTYPE" == dm500hd)
@@ -80,6 +85,16 @@ fi
 if test "$BOXTYPE" == "dreamone" -o "$BOXTYPE" == "dreamtwo"; then
 	AC_DEFINE(HAVE_AMLOGIC, 1,[define when we need to use amlogic])
 fi
+
+AC_ARG_WITH(nolcd,
+	AC_HELP_STRING([--with-nolcd], [disable ascii based lcd, yes or no]),
+	[[withnolcd=$withval]],
+	[[withnolcd=no]]
+)
+if test x"$withnolcd" != xno ; then
+	AC_DEFINE(NO_LCD, 1,[Define when disable an ascii based lcd device])
+fi
+AM_CONDITIONAL(NO_LCD, test x"$withnolcd" != xno)
 
 AC_ARG_WITH(textlcd,
 	AC_HELP_STRING([--with-textlcd], [use ascii based lcd, yes or no]),
