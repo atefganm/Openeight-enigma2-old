@@ -7,7 +7,7 @@
 #include <lib/gdi/esize.h>
 #include <lib/base/init.h>
 #include <lib/base/init_num.h>
-#if defined(HAVE_TEXTLCD) || defined(HAVE_7SEGMENT)
+#ifdef HAVE_TEXTLCD
 	#include <lib/base/estring.h>
 #endif
 #include <lib/gdi/glcddc.h>
@@ -57,7 +57,7 @@ void eLCD::unlock()
 	locked = 0;
 }
 
-#if defined(HAVE_TEXTLCD) || defined(HAVE_7SEGMENT)
+#ifdef HAVE_TEXTLCD
 void eLCD::renderText(ePoint start, const char *text)
 {
 	if (lcdfd >= 0 && start.y() < 5)
@@ -219,7 +219,7 @@ eDBoxLCD::~eDBoxLCD()
 
 void eDBoxLCD::update()
 {
-#if !defined(HAVE_TEXTLCD) && !defined(HAVE_7SEGMENT)
+#ifndef HAVE_TEXTLCD
 	if (lcdfd < 0)
 		return;
 
@@ -268,21 +268,22 @@ void eDBoxLCD::update()
 			write(lcdfd, raw, _stride * height);
 		}
 		else
+#if !defined(DREAMBOX_MOVE_LCD)
+			write(lcdfd, _buffer, _stride * res.height());
+#else
 		{
-#ifdef HAVE_COLORLCD220
-			//gggrrrrrbbbbbggg bit order from memory
-			//gggbbbbbrrrrrggg bit order to LCD
-			unsigned char l_buffer[_stride * res.height()];
+			unsigned char gb_buffer[_stride * res.height()];
 			for (int offset = 0; offset < ((_stride * res.height())>>2); offset ++)
 			{
-				unsigned int src = ((unsigned int*)_buffer)[offset];
-				((unsigned int*)l_buffer)[offset] = src & 0xE007E007 | (src & 0x1F001F00) >>5 | (src & 0x00F800F8) << 5;
+				unsigned int src = 0;
+				if (offset%(_stride>>2) >= 4) // 4 is offset for dm9x0
+					src = ((unsigned int*)_buffer)[offset - 4];  
+			//                                             blue                         red                  green low                     green high
+			((unsigned int*)gb_buffer)[offset] = ((src >> 3) & 0x001F001F) | ((src << 3) & 0xF800F800) | ((src >> 8) & 0x00E000E0) | ((src << 8) & 0x07000700);
 			}
-			write(lcdfd, l_buffer, _stride * res.height());
-#else
-			write(lcdfd, _buffer, _stride * res.height());
-#endif
+			write(lcdfd, gb_buffer, _stride * res.height());
 		}
+#endif
 	}
 	else /* lcd_type == 1 */
 	{

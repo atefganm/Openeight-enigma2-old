@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <fstream>
 #include <lib/gdi/grc.h>
 #include <lib/gdi/font.h>
 #include <lib/base/init.h>
@@ -43,6 +44,21 @@ gRC::gRC(): rp(0), wp(0)
 	m_spinner_enabled = 0;
 	m_spinneronoff = 1;
 }
+
+#ifdef CONFIG_ION
+void gRC::lock()
+{
+#ifndef SYNC_PAINT
+	pthread_mutex_lock(&mutex);
+#endif
+}
+void gRC::unlock()
+{
+#ifndef SYNC_PAINT
+	pthread_mutex_unlock(&mutex);
+#endif
+}
+#endif
 
 DEFINE_REF(gRC);
 
@@ -185,7 +201,11 @@ void *gRC::thread()
 				if (!idle)
 				{
 					if (!m_spinner_enabled)
+					{
 						eDebug("[gRC] main thread is non-idle! display spinner!");
+							std::ofstream dummy("/tmp/doPythonStackTrace");
+							dummy.close();
+					}
 					enableSpinner();
 				} else
 					disableSpinner();
@@ -434,6 +454,8 @@ void gPainter::setPalette(gRGB *colors, int start, int len)
 {
 	if ( m_dc->islocked() )
 		return;
+	if (len <= 0)
+		return;
 	ASSERT(colors);
 	gOpcode o;
 	o.opcode=gOpcode::setPalette;
@@ -441,7 +463,7 @@ void gPainter::setPalette(gRGB *colors, int start, int len)
 	gPalette *p=new gPalette;
 
 	o.parm.setPalette = new gOpcode::para::psetPalette;
-	p->data=new gRGB[len];
+	p->data=new gRGB[static_cast<size_t>(len)];
 
 	memcpy(static_cast<void*>(p->data), colors, len*sizeof(gRGB));
 	p->start=start;
